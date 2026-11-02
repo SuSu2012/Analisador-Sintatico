@@ -32,7 +32,14 @@ static const char *texto_do_lexema(int tipo)
     /* TODO(aluno): para ID, INTEGERCONST, CHARCONST e STRINGCONST, devolva
      * o texto do Symbol em microc_yylval.symbol; para UNDEF, devolva
      * microc_yylval.error_msg. */
-    (void) tipo;
+    if (tipo == UNDEF){
+        return microc_yylval.error_msg;
+    }
+    if (tipo == ID || tipo == INTEGERCONST || tipo == CHARCONST || tipo == STRINGCONST){
+        if (microc_yylval.symbol != NULL){
+            return microc_yylval.symbol;
+        }
+    }
     return microc_yytext;
 }
 
@@ -96,5 +103,6 @@ Token proximo_token(void)
 void scanner_finalizar(void)
 {
     /* TODO(aluno): liberar tambem a tabela de strings do TP1. */
+    liberar_tabela_hash();
     microc_yylex_destroy();
 }
