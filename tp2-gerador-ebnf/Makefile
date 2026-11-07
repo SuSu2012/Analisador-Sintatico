@@ -12,7 +12,7 @@ CFLAGS  = -ansi -pedantic -Wall -Wextra -g
 CFLAGS_FLEX = -g -w
 # Fontes C do TP1 alem do scanner.c (tabela de strings etc.) e bibliotecas.
 TP1_FONTES = $(filter-out microc/scanner.c, $(wildcard microc/*.c))
-LDLIBS_MICROC =
+LDLIBS_MICROC = -lm
 
 FONTES  = $(wildcard src/*.c)
 OBJETOS = $(patsubst src/%.c, build/obj/%.o, $(FONTES))
