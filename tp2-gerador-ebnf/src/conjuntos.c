@@ -68,9 +68,66 @@ void conj_imprimir(FILE *f, const Gramatica *g)
  *   E_ALT: 1 se algum filho for anulavel
  *   E_OPC, E_REP: 1 (calcule tambem o do filho)
  * Repita ate nada mudar. */
-void conj_anulavel(Gramatica *g)
+static int calc_expr_anulavel(Gramatica *g, Expr *e)
 {
-    (void) g;
+    int i, novo, mudou = 0;
+    if (e == NULL)
+        return 0;
+    switch (e->tipo) {
+    case E_TERM:
+        novo = 0;
+        break;
+    case E_VAZIO:
+        novo = 1;
+        break;
+    case E_NAOTERM:
+        novo = g->nts[e->simbolo].anulavel;
+        break;
+    case E_SEQ:
+        novo = 1;
+        for (i = 0; i < e->nfilhos; i++) {
+            mudou |= calc_expr_anulavel(g, e->filhos[i]);
+            if (!e->filhos[i]->anulavel)
+                novo = 0;
+        }
+        break;
+    case E_ALT:
+        novo = 0;
+        for (i = 0; i < e->nfilhos; i++) {
+            mudou |= calc_expr_anulavel(g, e->filhos[i]);
+            if (e->filhos[i]->anulavel)
+                novo = 1;
+        }
+        break;
+    case E_OPC:
+    case E_REP:
+        if (e->nfilhos > 0)
+            mudou |= calc_expr_anulavel(g, e->filhos[0]);
+        novo = 1;
+        break;
+    }
+    if (e->anulavel != novo) {
+        e->anulavel = novo;
+        mudou = 1;
+    }
+    return mudou;
+}
+
+ void conj_anulavel(Gramatica *g)
+{
+    int i, mudou;
+    do {
+        mudou = 0;
+        for (i = 0; i < g->nnts; i++) {
+            if (g->nts[i].regra != NULL) {
+                mudou |= calc_expr_anulavel(g, g->nts[i].regra);
+                if (g->nts[i].anulavel != g->nts[i].regra->anulavel) {
+                    g->nts[i].anulavel = g->nts[i].regra->anulavel;
+                    mudou = 1;
+                }
+            }
+        }
+    } while (mudou);
 }
 
 /* TODO(aluno): calcular e->first para cada no Expr e g->nts[i].first.
@@ -79,9 +136,64 @@ void conj_anulavel(Gramatica *g)
  *   E_ALT, E_OPC, E_REP: uniao dos FIRST dos filhos
  * Calcule o FIRST de TODOS os filhos de uma sequencia, mesmo os que
  * nao contribuem para o FIRST dela: o gerador de codigo usa-os. */
-void conj_first(Gramatica *g)
+static int calc_expr_first(Gramatica *g, Expr *e)
 {
-    (void) g;
+    int i, mudou = 0;
+    if (e == NULL)
+        return 0;
+    switch (e->tipo) {
+    case E_TERM:
+        if (!bitset_tem(&e->first, e->simbolo)) {
+            bitset_add(&e->first, e->simbolo);
+            mudou = 1;
+        }
+        break;
+    case E_VAZIO:
+        break;
+    case E_NAOTERM:
+        mudou |= bitset_unir(&e->first, &g->nts[e->simbolo].first);
+        break;
+    case E_SEQ:
+        /* Calcula FIRST de TODOS os filhos (exigencia da geracao de codigo) */
+        for (i = 0; i < e->nfilhos; i++) {
+            mudou |= calc_expr_first(g, e->filhos[i]);
+        }
+        /* Propaga FIRST dos filhos para a sequencia ate encontrar um nao-anulavel */
+        for (i = 0; i < e->nfilhos; i++) {
+            mudou |= bitset_unir(&e->first, &e->filhos[i]->first);
+            if (!e->filhos[i]->anulavel)
+                break;
+        }
+        break;
+    case E_ALT:
+        for (i = 0; i < e->nfilhos; i++) {
+            mudou |= calc_expr_first(g, e->filhos[i]);
+            mudou |= bitset_unir(&e->first, &e->filhos[i]->first);
+        }
+        break;
+    case E_OPC:
+    case E_REP:
+        if (e->nfilhos > 0) {
+            mudou |= calc_expr_first(g, e->filhos[0]);
+            mudou |= bitset_unir(&e->first, &e->filhos[0]->first);
+        }
+        break;
+    }
+    return mudou;
+}
+
+ void conj_first(Gramatica *g)
+{
+    int i, mudou;
+    do {
+        mudou = 0;
+        for (i = 0; i < g->nnts; i++) {
+            if (g->nts[i].regra != NULL) {
+                mudou |= calc_expr_first(g, g->nts[i].regra);
+                mudou |= bitset_unir(&g->nts[i].first, &g->nts[i].regra->first);
+            }
+        }
+    } while (mudou);
 }
 
 /* TODO(aluno): calcular e->follow (o que pode vir logo apos cada
@@ -93,7 +205,73 @@ void conj_first(Gramatica *g)
  *   E_REP { a }:   follow(a) U= follow(no) U FIRST(a)
  *   E_NAOTERM B:   FOLLOW(B) U= follow(no)
  * Repita ate nada mudar. */
+static int propagar_follow(Gramatica *g, Expr *e)
+{
+    int i, j, mudou = 0;
+    int resto_anulavel;
+    if (e == NULL)
+        return 0;
+    switch (e->tipo) {
+    case E_TERM:
+    case E_VAZIO:
+        break;
+    case E_NAOTERM:
+        mudou |= bitset_unir(&g->nts[e->simbolo].follow, &e->follow);
+        break;
+    case E_SEQ:
+        for (i = 0; i < e->nfilhos; i++) {
+            Expr *child = e->filhos[i];
+            resto_anulavel = 1;
+            /* follow(ai) U= FIRST(ai+1 ... an) */
+            for (j = i + 1; j < e->nfilhos; j++) {
+                mudou |= bitset_unir(&child->follow, &e->filhos[j]->first);
+                if (!e->filhos[j]->anulavel) {
+                    resto_anulavel = 0;
+                    break;
+                }
+            }
+            /* se ai+1 ... an for anulavel, follow(ai) U= follow(seq) */
+            if (resto_anulavel) {
+                mudou |= bitset_unir(&child->follow, &e->follow);
+            }
+
+            mudou |= propagar_follow(g, child);
+        }
+        break;
+    case E_ALT:
+    case E_OPC:
+        for (i = 0; i < e->nfilhos; i++) {
+            mudou |= bitset_unir(&e->filhos[i]->follow, &e->follow);
+            mudou |= propagar_follow(g, e->filhos[i]);
+        }
+        break;
+    case E_REP:
+        if (e->nfilhos > 0) {
+            Expr *child = e->filhos[0];
+            mudou |= bitset_unir(&child->follow, &e->follow);
+            mudou |= bitset_unir(&child->follow, &child->first);
+            mudou |= propagar_follow(g, child);
+        }
+        break;
+    }
+    return mudou;
+}
+
 void conj_follow(Gramatica *g)
 {
-    (void) g;
+    int i, mudou;
+    /* FOLLOW(inicial) contem $ (TERM_FIM) */
+    if (g->inicial >= 0) {
+        bitset_add(&g->nts[g->inicial].follow, TERM_FIM);
+    }
+    do {
+        mudou = 0;
+        for (i = 0; i < g->nnts; i++) {
+            if (g->nts[i].regra != NULL) {
+                /* Para cada regra A = alfa, faca follow(alfa) U= FOLLOW(A) */
+                mudou |= bitset_unir(&g->nts[i].regra->follow, &g->nts[i].follow);
+                mudou |= propagar_follow(g, g->nts[i].regra);
+            }
+        }
+    } while (mudou);
 }
