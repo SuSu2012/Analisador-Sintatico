@@ -14,6 +14,8 @@ int linha_atual = 1;
 char buffer_string[TAM_BUFFER];
 int pos_buffer = 0;
 
+char buffer_erro[TAM_BUFFER];
+
 void clear_string_buffer(void) {
     int i;
     for (i = 0; i < TAM_BUFFER - 1; i++) {
@@ -236,7 +238,7 @@ ALFANUM     [a-zA-Z0-9_]
 <STRING>\n                  {
                                 microc_yylval.error_msg = "String nao terminada";
                                 BEGIN(INITIAL);
-                                linha_atual++;
+                                yyless(0);
                                 return UNDEF;
                             }
 
@@ -282,7 +284,10 @@ ALFANUM     [a-zA-Z0-9_]
 "]"                         { termina_expr = 1; return RBRACKET; }
 
 .                           {
-                                microc_yylval.error_msg = strdup(yytext);
+                                snprintf(buffer_erro, sizeof(buffer_erro), "caractere invalido: ");
+                                buffer_erro[20] = yytext[0];
+                                buffer_erro[21] = '\0';
+                                microc_yylval.error_msg = buffer_erro;
                                 return UNDEF;
                             }
 
