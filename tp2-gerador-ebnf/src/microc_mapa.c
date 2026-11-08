@@ -61,14 +61,88 @@ static void adicionar_nome(const char *s, size_t n)
  * Enquanto nao implementada, a verificacao dos nomes e pulada. */
 int microc_carregar_tokens_h(const char *caminho)
 {
-    static int avisado = 0;
-    (void) adicionar_nome;
-    if (!avisado) {
-        diag_aviso(0, 0, "microc_carregar_tokens_h ainda nao implementado: nomes "
-                   "de %s nao verificados", caminho ? caminho : "tokens.h");
-        avisado = 1;
+    char *conteudo;
+    const char *p;
+    const char *inicio_enum;
+    const char *fim_enum;
+ 
+    if (caminho == NULL)
+        return -1;
+ 
+    conteudo = ler_arquivo(caminho);
+    if (conteudo == NULL)
+        return -1;
+ 
+    p = strstr(conteudo, "enum");
+    if (p == NULL) {
+        free(conteudo);
+        return -1;
     }
-    return -1;
+ 
+    inicio_enum = strchr(p, '{');
+    if (inicio_enum == NULL) {
+        free(conteudo);
+        return -1;
+    }
+    inicio_enum++;
+ 
+    fim_enum = strchr(inicio_enum, '}');
+    if (fim_enum == NULL) {
+        free(conteudo);
+        return -1;
+    }
+ 
+    p = inicio_enum;
+    while (p < fim_enum) {
+        while (p < fim_enum && isspace((unsigned char)*p))
+            p++;
+ 
+        if (p >= fim_enum)
+            break;
+ 
+        if (p[0] == '/' && p[1] == '/') {
+            p += 2;
+            while (p < fim_enum && *p != '\n')
+                p++;
+            continue;
+        }
+ 
+        /* Ignora comentarios de bloco (abre-barra-asterisco) */
+        if (p[0] == '/' && p[1] == '*') {
+            p += 2;
+            while (p + 1 < fim_enum && !(p[0] == '*' && p[1] == '/'))
+                p++;
+            if (p + 1 < fim_enum)
+                p += 2;
+            continue;
+        }
+ 
+        if (isalpha((unsigned char)*p) || *p == '_') {
+            const char *inicio_id = p;
+            size_t tam_id;
+ 
+            while (p < fim_enum && (isalnum((unsigned char)*p) || *p == '_'))
+                p++;
+            tam_id = (size_t)(p - inicio_id);
+ 
+            adicionar_nome(inicio_id, tam_id);
+ 
+            while (p < fim_enum && isspace((unsigned char)*p))
+                p++;
+ 
+            if (p < fim_enum && *p == '=') {
+                while (p < fim_enum && *p != ',' && *p != '}')
+                    p++;
+            }
+            if (p < fim_enum && *p == ',')
+                p++;
+        } else {
+            p++;
+        }
+    }
+ 
+    free(conteudo);
+    return 0;
 }
 
 int microc_token_existe(const char *nome)
