@@ -1,5 +1,5 @@
-aluno: <sua_matricula>
-uso_ia: <sim|nao>
+aluno: <Suelen Farias Paulino (202519050060) e João Pedro Pinheiro (202519050044)>
+uso_ia: <sim>
 
 # Compiladores I — Trabalho Prático 2: Gerador de Analisadores Sintáticos Descendentes Recursivos
 
