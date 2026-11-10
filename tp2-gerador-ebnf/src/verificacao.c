@@ -19,23 +19,6 @@
 #include "microc_mapa.h"
 #include "util.h"
 
-/* ------------------------------------------------------------------ */
-/* Fornecido                                                          */
-/* ------------------------------------------------------------------ */
-static const char *const literais[][2] = {
-    { "+",  "PLUS" },      { "-",  "MINUS" },     { "*",  "MUL" },
-    { "/",  "DIV" },       { "%",  "MOD" },
-    { "==", "EQ" },        { "!=", "NEQ" },       { "<",  "LT" },
-    { ">",  "GT" },        { "<=", "LEQ" },       { ">=", "GEQ" },
-    { "&&", "AND" },       { "||", "OR" },        { "!",  "NOT" },
-    { "=",  "ASSIGN" },    { ";",  "SEMICOLON" }, { ",",  "COMMA" },
-    { "(",  "LPAREN" },    { ")",  "RPAREN" },    { "{",  "LBRACE" },
-    { "}",  "RBRACE" },    { "[",  "LBRACKET" },  { "]",  "RBRACKET" },
-    { "main", "MAIN" },    { "if", "IF" },        { "else", "ELSE" },
-    { "for", "FOR" },      { "return", "RETURN" },{ "int", "INT" },
-    { "char", "CHAR" },    { "print", "PRINT" }
-};
-
 static int verif_indefinidos(Gramatica *g)
 {
     int i, erros = 0;

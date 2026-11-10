@@ -1,0 +1,12 @@
+(* Gramática segregadora *)
+TOKENS
+  ID   = /[A-Za-z_][A-Za-z0-9]*/ ;
+  CHA  = /'[A-Za-z]'/ ;
+  NUM  = /[0-9]+/ ;
+  SKIP = /[ \t\r\n]+/ ;
+
+RULES
+  strt = attr { attr } ;
+  attr = ID "=" (char | mat) ";" ;
+  char = CHA { ( "+" | "-" ) CHA } ;
+  mat  = NUM { ( "+" | "-" |"*" | "/" ) NUM } ;

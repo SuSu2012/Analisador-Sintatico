@@ -1,0 +1,10 @@
+NAO TERMINAL  ANULAVEL  FIRST / FOLLOW
+strt          nao       FIRST  = {ID}
+                        FOLLOW = {$}
+attr          nao       FIRST  = {ID}
+                        FOLLOW = {$, ID}
+char          nao       FIRST  = {CHA}
+                        FOLLOW = {';'}
+mat           nao       FIRST  = {NUM}
+                        FOLLOW = {';'}
+status 0

@@ -91,5 +91,8 @@ Gramáticas de teste:
 
 - `expr.ebnf`: expressões aritméticas (válida);
 - `microc.ebnf`: Micro C, usando o scanner do TP1 (válida);
+- `gram.ebnf`: uma ou mais atribuições do tipo `x = 1 + 2;` ou `c = 'a' + 'b';` (válida). Uma expressão só pode juntar valores do mesmo tipo: só números (com `+`, `-`, `*`, `/`) ou só caracteres entre aspas simples (com `+`, `-`). Misturar os dois, como em `x = 'a' + 1;`, é erro;
 - `recursao_esquerda.ebnf`: deve ser recusada por recursão à esquerda;
 - `conflito_ll1.ebnf`: deve ser recusada por conflito LL(1).
+
+Cada gramática válida tem pelo menos 3 programas aceitos e 3 rejeitados. No total são 25 testes, e todos passam.
