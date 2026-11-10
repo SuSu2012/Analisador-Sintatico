@@ -36,9 +36,6 @@ static const char *const literais[][2] = {
     { "char", "CHAR" },    { "print", "PRINT" }
 };
 
-static char **nomes = NULL;
-static int nnomes = 0, capnomes = 0;
-
 static int verif_indefinidos(Gramatica *g)
 {
     int i, erros = 0;
