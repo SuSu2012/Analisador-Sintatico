@@ -2,3 +2,5 @@ manual.pdf
 .DS_Store
 build/
 gerador
+relatorio/
+tp2_gerador_ebnf-1.pdf
