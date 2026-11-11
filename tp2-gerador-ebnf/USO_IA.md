@@ -18,8 +18,19 @@
     O que fiz:  A IA foi consultada apenas, apontou avisos de compilação e diferenças
                 nas mensagens; o que corrigimos, corrigimos nós mesmos.
 
-
     Ferramenta: Claude (Claude Code), modelo Claude Opus 5.5
     Trecho:     README.md
     Finalidade: pedi para formatar o README.md de maneira estética e segundo as instruções de entrega.
 
+    Ferramenta: Claude, modelo Claude Sonnet 5.5
+    Trecho:     src/codegen.c (gen_casamento_regex e gen_token_de_arquivo)
+    Finalidade: pedi para conferir se as minhas soluções estavam corretas. A IA
+                apontou que a classe negada [^...] não invertia o '\n' (o que
+                quebraria comentários e strings) e uma declaração fora do
+                início de bloco (C89).
+    O que fiz:  apliquei a correção da classe negada escrita por mim.
+
+    Ferramenta: Claude, modelo Claude Sonnet 5.5
+    Trecho:     src/verificacao.c
+    Finalidade: pedi para conferir se as minhas soluções estavam corretas.
+    O que fiz:  conferi juntamente com os meus testes se estavam batendo com o resultado.
