@@ -1136,6 +1136,8 @@ static const char *const rt_estado[] = {
     "",
     "static int contador_erros = 0;",
     "",
+    "static int modo_panico = 0;",
+    "",
     NULL
 };
 
@@ -1150,22 +1152,25 @@ static const char *const rt_primitivas[] = {
     "    return 0;",
     "}",
     "",
-    "/* Reporta o erro com os tokens esperados (lista terminada em -1) e encerra. */",
+    "/* Reporta o erro com os tokens esperados (lista terminada em -1) e encerra caso o modo --recuperar esteja desligado. */",
     "void erro_sintatico(const int *esperados)",
-    "{",
+    "{",    
     "    int i;",
-    "    escrever_posicao();",
-    "    if ((int) tok.tipo == TOKEN_FIM)",
-    "        fprintf(stderr, \"encontrado fim de arquivo, \");",
-    "    else",
-    "        fprintf(stderr, \"encontrado '%s', \", tok.lexema);",
-    "    if (esperados[0] != -1 && esperados[1] == -1) {",
-    "        fprintf(stderr, \"esperado %s\\n\", nome_token(esperados[0]));",
-    "    } else {",
-    "        fprintf(stderr, \"esperado um de {\");",
-    "        for (i = 0; esperados[i] != -1; i++)",
-    "            fprintf(stderr, \"%s%s\", i > 0 ? \", \" : \"\", nome_token(esperados[i]));",
-    "        fprintf(stderr, \"}\\n\");",
+    "    if (modo_panico == 0) {",
+    "        modo_panico = 1;",
+    "        escrever_posicao();",
+    "        if ((int) tok.tipo == TOKEN_FIM)",
+    "            fprintf(stderr, \"encontrado fim de arquivo, \");",
+    "        else",
+    "            fprintf(stderr, \"encontrado '%s', \", tok.lexema);",
+    "        if (esperados[0] != -1 && esperados[1] == -1) {",
+    "            fprintf(stderr, \"esperado %s\\n\", nome_token(esperados[0]));",
+    "        } else {",
+    "            fprintf(stderr, \"esperado um de {\");",
+    "            for (i = 0; esperados[i] != -1; i++)",
+    "                fprintf(stderr, \"%s%s\", i > 0 ? \", \" : \"\", nome_token(esperados[i]));",
+    "            fprintf(stderr, \"}\\n\");",
+    "        }",
     "    }",
     "    contador_erros += 1;",
     "    if (recupera_erros == 0) {",
@@ -1211,6 +1216,7 @@ static const char *const rt_primitivas[] = {
     "        else",
     "            printf(\"%s '%s'\\n\", nome_token(tok.tipo), tok.lexema);",
     "    }",
+    "    modo_panico = 0;",
     "    avancar();",
     "}",
     "",
@@ -1468,6 +1474,11 @@ static void gerar_procedimentos(FILE *f, const Gramatica *g, const OpcoesGeracao
         if (op->arvore)
             emit(&em, "arvore_entra(\"%s\");", g->nts[i].nome);
         gen_expr(&em, g, g->nts[i].regra);
+        emit_teste(&em, "while (modo_panico && !(", g, &g->nts[i].follow, ") && tok.tipo != TOKEN_FIM) {");
+        em.nivel++;
+        emit(&em, "avancar();");
+        em.nivel--;
+        emit(&em, "}");
         if (op->arvore)
             emit(&em, "arvore_sai();");
         fputs("}\n\n", f);
