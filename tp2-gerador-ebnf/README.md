@@ -46,7 +46,7 @@ Opções do gerador:
 - `--tree`: inclui no analisador a opção de imprimir a árvore de derivação;
 - `--scanner microc`: usa o scanner do TP1 em vez de gerar um léxico.
 
-O analisador gerado lê o programa do arquivo indicado ou da entrada padrão. Ele termina com código 0 quando aceita a entrada e com 1 quando encontra erro. Com `--tokens arquivo`, ele lê os tokens de um arquivo no formato do TP1 (`Token: tipo = 33, lexema = 'int', linha = 1`) em vez de ler o programa.
+O analisador gerado lê o programa do arquivo indicado ou da entrada padrão. Ele termina com código 0 quando aceita a entrada e com 1 quando encontra erro. Com `--tokens arquivo`, ele lê os tokens de um arquivo no formato do TP1 (`Token: tipo = 33, lexema = 'int', linha = 1`) em vez de ler o programa. Com `--recuperar`, ele não para no primeiro erro sintático e continua a análise (veja "Extras implementados").
 
 ## O que foi implementado
 
@@ -128,10 +128,45 @@ gcc -ansi -pedantic -Wall -Wextra -o build/ebnf_bin build/ebnf.c
 
 Esse analisador verifica só a **escrita** da gramática. Por isso ele aceita `recursao_esquerda.ebnf` e `conflito_ll1.ebnf`: as duas estão bem escritas, e os problemas delas (recursão à esquerda e conflito LL(1)) só são encontrados pelas verificações do gerador.
 
-Os testes ficam em `testes/programas/ebnf/`. Os programas aceitos são cópias de `expr.ebnf`, `gram.ebnf` e `microc.ebnf`. Os rejeitados têm um parêntese sem fechar, um não terminal escrito com maiúscula e uma regra sem `;` no final.
+Os testes ficam em `testes/programas/ebnf/`. Os programas aceitos são cópias de `expr.ebnf`, `gram.ebnf`, `microc.ebnf` e do próprio `ebnf.ebnf`. Os rejeitados têm um parêntese sem fechar, um não terminal escrito com maiúscula e uma regra sem `;` no final.
 
 Limitações (formas que o gerador aceita, mas esta gramática não):
 
 - comentário com `*` no meio, como `(* a * b *)`;
 - não terminal com letra maiúscula depois da primeira letra, como `minhaRegra`;
 - literal com a outra aspa dentro, como `"'"`, ou com escape, como `"\""`.
+
+### Continuar a análise após um erro (+1,0)
+
+Sem opção nenhuma, o analisador gerado continua igual: mostra o primeiro erro e termina. Com a opção `--recuperar`, ele mostra o erro e segue analisando o resto da entrada, para encontrar outros erros na mesma execução:
+
+```
+$ printf "x = 'a' + 1;\ny = 2 + ;\n" | ./build/gram_bin --recuperar
+linha 1, coluna 11: encontrado '1', esperado CHA
+linha 2, coluna 9: encontrado ';', esperado NUM
+```
+
+No fim, se houve algum erro, o analisador não imprime `entrada aceita` e termina com código 1. A opção funciona no modo próprio e no modo Micro C, e também junto com `--tree`.
+
+A técnica usada é a recuperação em **modo pânico**. Depois de um erro, o analisador fica "perdido": não sabe mais em que ponto da gramática a entrada está. Se continuasse como se nada tivesse acontecido, mostraria vários erros falsos, que são só consequência do primeiro. Por isso a recuperação tem três partes:
+
+1. **Ao achar um erro**, `erro_sintatico` mostra a mensagem e liga a variável `modo_panico`. Enquanto ela está ligada, novos erros não são mostrados. O `match` que falha não consome o token: só reporta e volta.
+2. **No fim de cada procedimento `parse_X`**, se `modo_panico` está ligada, o analisador descarta tokens até achar um que esteja no FOLLOW de X, ou até o fim do arquivo. O FOLLOW de X é o que pode vir logo depois de um X, então quem chamou `parse_X` consegue continuar dali. O gerador escreve esse laço no fim de todo procedimento, com o FOLLOW calculado na etapa 3:
+
+   ```c
+   while (modo_panico && !(tok.tipo == T_PV) && tok.tipo != TOKEN_FIM) {
+       avancar();
+   }
+   ```
+
+3. **Quando um `match` casa um token**, `modo_panico` é desligada. É o sinal de que o analisador e a entrada voltaram a concordar, e os próximos erros voltam a ser mostrados.
+
+Quando falta um token, nada é descartado. Em `x = 5 y = 6;`, o `;` que falta é reportado, o `y` já está no FOLLOW da atribuição, e a análise continua em `y = 6;`. Quando sobra um token, ele é descartado. Em `(1 2) + 3`, o `2` é pulado e só um erro é mostrado.
+
+Onde está no código: as variáveis `recupera_erros`, `contador_erros` e `modo_panico` (em `rt_estado`), `erro_sintatico` e `match` (em `rt_primitivas`), o laço de descarte (em `gerar_procedimentos`) e a leitura da opção e o código de saída (em `gerar_main`), todos em `src/codegen.c`.
+
+Limitações:
+
+- a recuperação é aproximada. O FOLLOW diz o que pode vir depois de X em algum lugar da gramática, não necessariamente no ponto do erro. Por isso, às vezes o analisador descarta um trecho que tinha outro erro, e esse segundo erro não é mostrado;
+- erros léxicos (como um caractere inválido ou uma string não terminada) continuam encerrando a análise, mesmo com `--recuperar`;
+- os testes de `make test` rodam os analisadores sem opção, então não cobrem a recuperação. Ela foi testada à mão, com as gramáticas `gram`, `expr` e `microc`.

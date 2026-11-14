@@ -34,3 +34,36 @@
     Trecho:     src/verificacao.c
     Finalidade: pedi para conferir se as minhas soluções estavam corretas.
     O que fiz:  conferi juntamente com os meus testes se estavam batendo com o resultado.
+
+    Ferramenta: Claude (Claude Code), modelo Claude Opus 5.5
+    Trecho:     testes/gramaticas/gram.ebnf e testes/programas/gram/
+    Finalidade: tirar dúvidas ao escrever a 5ª gramática: como representar
+                vazio e repetição em EBNF sem recursão à esquerda, a diferença
+                entre duas expressões regulares para identificador, por que o
+                token CHA nunca era reconhecido (empate com ID).
+    O que fiz:  escrevi a gramática e os programas de teste eu mesmo. A IA
+                testou as versões e apontou os problemas;
+
+    Ferramenta: Claude (Claude Code), modelo Claude Opus 5.5
+    Trecho:     extras (enunciado tp2_gerador_ebnf-1.pdf)
+    Finalidade: pedi para ler o enunciado, listar os extras opcionais e
+                explicar o que precisava ser feito em cada um.
+    O que fiz:  apenas consultado. Usei a explicação para planejar os extras.
+
+    Ferramenta: Claude (Claude Code), modelo Claude Opus 5.5
+    Trecho:     testes/gramaticas/ebnf.ebnf (extra: EBNF em EBNF)
+    Finalidade: revisar as expressões regulares da seção TOKENS. A IA testou o
+                léxico gerado com várias entradas e apontou os erros.
+    O que fiz:  escrevi e corrigi as expressões regulares e a seção RULES eu
+                mesmo, a partir das explicações.
+
+    Ferramenta: Claude (Claude Code), modelo Claude Opus 5.5
+    Trecho:     src/codegen.c (extra: continuar a análise após um erro)
+    Finalidade: entender como o codegen.c escreve o analisador (rt_estado,
+                rt_primitivas, gerar_procedimentos, gerar_main), entender a
+                recuperação em modo pânico e revisar cada passo. A IA explicou
+                as funções emit e emit_teste e mostrou o formato da linha do
+                laço de descarte que precisava aparecer no código gerado.
+    O que fiz:  escrevi o código eu mesmo, passo a passo; a IA testou cada
+                versão e apontou erros (= no lugar de ==, chave faltando,
+                -> no lugar de ., indentação do código gerado).
