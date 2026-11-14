@@ -92,7 +92,46 @@ Gramáticas de teste:
 - `expr.ebnf`: expressões aritméticas (válida);
 - `microc.ebnf`: Micro C, usando o scanner do TP1 (válida);
 - `gram.ebnf`: uma ou mais atribuições do tipo `x = 1 + 2;` ou `c = 'a' + 'b';` (válida). Uma expressão só pode juntar valores do mesmo tipo: só números (com `+`, `-`, `*`, `/`) ou só caracteres entre aspas simples (com `+`, `-`). Misturar os dois, como em `x = 'a' + 1;`, é erro;
+- `ebnf.ebnf`: a própria notação EBNF do gerador (válida). É o extra descrito abaixo;
 - `recursao_esquerda.ebnf`: deve ser recusada por recursão à esquerda;
 - `conflito_ll1.ebnf`: deve ser recusada por conflito LL(1).
 
-Cada gramática válida tem pelo menos 3 programas aceitos e 3 rejeitados. No total são 25 testes, e todos passam.
+Cada gramática válida tem pelo menos 3 programas aceitos e 3 rejeitados. No total são 33 testes, e todos passam.
+
+## Extras implementados
+
+### Notação EBNF descrita em EBNF (+0,5)
+
+O arquivo `testes/gramaticas/ebnf.ebnf` descreve, na própria notação EBNF, como se escreve um arquivo `.ebnf`. A gramática é a mesma que está no comentário do início de `src/ebnf_parser.c`. A seção TOKENS define por expressões regulares o que o léxico do gerador (`src/ebnf_lexer.c`) reconhece à mão:
+
+| Token | Expressão regular | Exemplo |
+| --- | --- | --- |
+| `NOME_TERM` (terminal nomeado) | `/[A-Z][A-Z0-9_]*/` | `NUM`, `STRINGCONST` |
+| `NAOTERM` (não terminal) | `/[a-z][a-z0-9_]*/` | `expr`, `secao_rules` |
+| `LITERAL` | `/("[^"']+"\|'[^"']+')/` | `"while"`, `'+'` |
+| `REGEX` | `/\/([^\/\\]\|\\.)+\//` | `/[0-9]+/`, `/a\/b/` |
+| espaços (SKIP) | `/[ \t\r\n]+/` | |
+| comentários (SKIP) | `/\(\*[^*]*\*\)/` | `(* comentario *)` |
+
+O conteúdo de `REGEX` é uma repetição de duas peças: um caractere que não é `/` nem `\`, ou uma `\` seguida de qualquer caractere. Assim `\/` é lido como parte da expressão e não fecha o token, como faz o léxico do gerador.
+
+As palavras `TOKENS`, `RULES`, `SKIP` e `EXTERN` aparecem como literais nas regras. Elas também casam com a expressão de `NOME_TERM`, mas, quando há empate, o literal vence. Assim elas funcionam como palavras reservadas.
+
+O gerador aceita a gramática sem conflitos LL(1), e o analisador gerado a partir dela verifica se um arquivo `.ebnf` está bem escrito:
+
+```
+./gerador testes/gramaticas/ebnf.ebnf -o build/ebnf
+gcc -ansi -pedantic -Wall -Wextra -o build/ebnf_bin build/ebnf.c
+./build/ebnf_bin testes/gramaticas/expr.ebnf      # entrada aceita
+./build/ebnf_bin testes/gramaticas/ebnf.ebnf      # entrada aceita: a gramática lê a si mesma
+```
+
+Esse analisador verifica só a **escrita** da gramática. Por isso ele aceita `recursao_esquerda.ebnf` e `conflito_ll1.ebnf`: as duas estão bem escritas, e os problemas delas (recursão à esquerda e conflito LL(1)) só são encontrados pelas verificações do gerador.
+
+Os testes ficam em `testes/programas/ebnf/`. Os programas aceitos são cópias de `expr.ebnf`, `gram.ebnf` e `microc.ebnf`. Os rejeitados têm um parêntese sem fechar, um não terminal escrito com maiúscula e uma regra sem `;` no final.
+
+Limitações (formas que o gerador aceita, mas esta gramática não):
+
+- comentário com `*` no meio, como `(* a * b *)`;
+- não terminal com letra maiúscula depois da primeira letra, como `minhaRegra`;
+- literal com a outra aspa dentro, como `"'"`, ou com escape, como `"\""`.

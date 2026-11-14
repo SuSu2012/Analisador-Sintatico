@@ -1,0 +1,32 @@
+ (* Gramatica da propria notacao (escrita em EBNF):
+ 
+    gramatica    = [ secao_tokens ] secao_rules ;
+    secao_tokens = "TOKENS" ( "EXTERN" LITERAL ";" | { def_token } ) ;
+    def_token    = NOME_TERM "=" REGEX ";"
+                 | "SKIP" "=" REGEX ";" ;
+    secao_rules  = "RULES" regra { regra } ;
+    regra        = NAOTERM "=" expr ";" ;
+    expr         = seq { "|" seq } ;
+    seq          = { fator } ;
+    fator        = NOME_TERM | LITERAL | NAOTERM
+                 | "(" expr ")" | "[" expr "]" | "{" expr "}" ; *)
+
+TOKENS
+  NOME_TERM  = /[A-Z][A-Z0-9_]*/ ;
+  LITERAL = /("[^"']+"|'[^"']+')/;
+  NAOTERM = /[a-z][a-z0-9_]*/ ;
+  SKIP = /[ \t\r\n]+/ ;
+  SKIP = /\(\*[^*]*\*\)/ ;
+  REGEX = /\/([^\/\\]|\\.)+\//;
+
+RULES
+    gramatica    = [ secao_tokens ] secao_rules ;
+    secao_tokens = "TOKENS" ( "EXTERN" LITERAL ";" | { def_token } ) ;
+    def_token    = NOME_TERM "=" REGEX ";"
+                    | "SKIP" "=" REGEX ";" ;
+    secao_rules  = "RULES" regra { regra } ;
+    regra        = NAOTERM "=" expr ";" ;
+    expr         = seq { "|" seq } ;
+    seq          = { fator } ;
+    fator        = NOME_TERM | LITERAL | NAOTERM
+                    | "(" expr ")" | "[" expr "]" | "{" expr "}" ;
