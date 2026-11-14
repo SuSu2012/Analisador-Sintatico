@@ -1132,6 +1132,10 @@ static const char *const rt_estado[] = {
     "",
     "static Token token_de_arquivo(void);",
     "",
+    "static int recupera_erros = 0; /* opcao --recuperar */",
+    "",
+    "static int contador_erros = 0;",
+    "",
     NULL
 };
 
@@ -1163,7 +1167,10 @@ static const char *const rt_primitivas[] = {
     "            fprintf(stderr, \"%s%s\", i > 0 ? \", \" : \"\", nome_token(esperados[i]));",
     "        fprintf(stderr, \"}\\n\");",
     "    }",
-    "    exit(EXIT_FAILURE);",
+    "    contador_erros += 1;",
+    "    if (recupera_erros == 0) {",
+    "        exit(EXIT_FAILURE);",
+    "    }",
     "}",
     "",
     "static void recuo(void)",
@@ -1195,6 +1202,7 @@ static const char *const rt_primitivas[] = {
     "        lista[0] = esperado;",
     "        lista[1] = -1;",
     "        erro_sintatico(lista);",
+    "        return ;",
     "    }",
     "    if (SUPORTE_ARVORE && imprimir_arvore) {",
     "        recuo();",
@@ -1477,8 +1485,10 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
     fputs("            imprimir_arvore = 1;\n", f);
     fputs("        } else if (strcmp(argv[i], \"--tokens\") == 0 && i + 1 < argc) {\n", f);
     fputs("            tokens = argv[++i];\n", f);
+    fputs("        } else if (strcmp(argv[i], \"--recuperar\") == 0) {\n", f);
+    fputs("            recupera_erros = 1;\n", f);
     fputs("        } else if (argv[i][0] == '-' && argv[i][1] != '\\0') {\n", f);
-    fputs("            fprintf(stderr, \"uso: %s [--tree] [--tokens arquivo.tok | "
+    fputs("            fprintf(stderr, \"uso: %s [--tree] [--recuperar] [--tokens arquivo.tok | "
           "programa]\\n\", argv[0]);\n", f);
     fputs("            return 2;\n        } else {\n            arquivo = argv[i];\n"
           "        }\n    }\n", f);
@@ -1503,7 +1513,9 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
     fputs("    if (tok.tipo != TOKEN_FIM) {\n", f);
     fputs("        fim[0] = TOKEN_FIM;\n        fim[1] = -1;\n", f);
     fputs("        erro_sintatico(fim);\n    }\n", f);
-    fputs("    printf(\"entrada aceita\\n\");\n\n", f);
+    fputs("    if (contador_erros == 0) {\n", f);
+    fputs("        printf(\"entrada aceita\\n\");\n", f);
+    fputs("    }\n", f);
     fputs("    if (arquivo_tokens != NULL) {\n        fclose(arquivo_tokens);\n", f);
     fputs("    } else {\n", f);
     if (op->microc)
@@ -1511,7 +1523,9 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
     else
         fputs("        free(fonte);\n", f);
     fputs("        if (entrada != stdin)\n            fclose(entrada);\n    }\n", f);
-    fputs("    return 0;\n}\n", f);
+    fputs("    if (contador_erros > 0) {\n        return 1;\n    }\n", f);
+    fputs("    return 0;\n", f);
+    fputs("}\n", f);
 }
 
 static const char *nome_base(const char *caminho)
