@@ -1138,6 +1138,19 @@ static const char *const rt_estado[] = {
     "",
     "static int modo_panico = 0;",
     "",
+    "typedef struct No {",
+    "    const char *nome;",
+    "    char lexema[100];",
+    "    struct No **filhos;",
+    "    struct No *pai;",
+    "    int n_filhos;",
+    "    int tam_total;",
+    "} No;",
+    "",
+    "static No *raiz_ast = NULL;",
+    "static No *atual_ast = NULL;",
+    "",
+    "static int imprime_ast = 0; /* opcao --ast */",
     NULL
 };
 
@@ -1178,6 +1191,119 @@ static const char *const rt_primitivas[] = {
     "    }",
     "}",
     "",
+    "No *criar_ast(const char *nome, const char *lexema)",
+    "{",
+    "    No* no_ast = calloc(1, sizeof(No));",
+    "    if (no_ast == NULL) {",
+    "        fprintf(stderr, \"nao foi possivel alocar espaco para o no ast\\n\");",
+    "        exit(EXIT_FAILURE);",
+    "    }",
+    "    no_ast->nome = nome;",
+    "    strcpy(no_ast->lexema, lexema);",
+    "    no_ast->filhos = NULL;",
+    "    no_ast->pai = NULL;",
+    "    no_ast->n_filhos = 0;",
+    "    no_ast->tam_total = 0;",
+    "    return no_ast;",
+    "}",
+    "",
+    "void adicionar_filho_ast(No *pai, No *filho)",
+    "{",
+    "    int novo_tam = 0;",
+    "    if (pai->n_filhos == pai->tam_total) {",
+    "        if (pai->tam_total == 0) {",
+    "            novo_tam = 4;",
+    "            pai->filhos = realloc(pai->filhos, novo_tam*sizeof(No *));",
+    "            if (pai->filhos == NULL) {",
+    "                fprintf(stderr, \"memoria insuficiente\\n\");",
+    "                exit(EXIT_FAILURE);",
+    "            }",
+    "            pai->tam_total = novo_tam;",
+    "        } else {",
+    "            novo_tam = 2*pai->tam_total;",
+    "            pai->filhos = realloc(pai->filhos, novo_tam*sizeof(No *));",
+    "            if (pai->filhos == NULL) {",
+    "                fprintf(stderr, \"memoria insuficiente\\n\");",
+    "                exit(EXIT_FAILURE);",
+    "            }",
+    "            pai->tam_total = novo_tam;}",
+    "    }",
+    "    pai->filhos[pai->n_filhos] = filho;",
+    "    pai->n_filhos++;",
+    "    filho->pai = pai;",
+    "}",
+    "",
+    "void imprimir_ast(No *no_ast, int nivel)",
+    "{",
+    "    int i = 0;",
+    "    for (i = 0; i < 2*nivel; i++) { printf(\" \"); }",
+    "    printf(\"%s\", no_ast->nome);",
+    "    if (no_ast->lexema[0] != \'\\0\') { printf(\" \'%s\'\", no_ast->lexema); }",
+    "    printf(\"\\n\");",
+    "    for (i = 0; i < no_ast->n_filhos; i++) {",
+    "        imprimir_ast(no_ast->filhos[i], nivel+1);",
+    "    }",
+    "}",
+    "",
+    "void liberar_ast(No *no_ast)",
+    "{",
+    "    int i = 0;",
+    "    if (no_ast == NULL) {",
+    "        return ;}",
+    "    for (i = 0; i < no_ast->n_filhos; i++) {;",
+    "        liberar_ast(no_ast->filhos[i]);}",
+    "    free(no_ast->filhos);",
+    "    free(no_ast);",
+    "}",
+    "",
+    "int eh_pontuacao(const char *nome)",
+    "{",
+    "    static const char *const descarta[] = {\"'('\", \"')'\", \"'['\", \"']'\", \"'{'\", \"'}'\", \"';'\", \"','\", NULL};",
+    "    int i = 0;",
+    "    while (descarta[i] != NULL) {",
+    "        if (strcmp(nome, descarta[i++]) == 0) {",
+    "            return 1;",
+    "        }",
+    "    }",
+    "    return 0;",
+    "}",
+    "",
+    "No *simplificar_ast(No *no_ast)",
+    "{",
+    "    int i = 0;",
+    "    int k = 0;",
+    "    No *no_valido;",
+    "    No *filho_unico;",
+    "    if (no_ast == NULL) {",
+    "        return no_ast;",
+    "    }",
+    "    if (no_ast->n_filhos == 0) {",
+    "        if (eh_pontuacao(no_ast->nome)) {",
+    "            liberar_ast(no_ast);",
+    "            return NULL;",
+    "        } else {",
+    "            return no_ast ;",
+    "        }",
+    "    }",
+    "    for (i = 0; i < no_ast->n_filhos; i++) {",
+    "        no_valido = simplificar_ast(no_ast->filhos[i]);",
+    "        if (no_valido != NULL) {",
+    "            no_ast->filhos[k] = no_valido;",
+    "            no_valido->pai = no_ast;",
+    "            k++;",
+    "        }",
+    "    }",
+    "    no_ast->n_filhos = k;",
+    "    if (k == 1) {",
+    "        filho_unico = no_ast->filhos[0];",
+    "        filho_unico->pai = no_ast->pai;",
+    "        free(no_ast->filhos);",
+    "        free(no_ast);",
+    "        return filho_unico;",
+    "    }",
+    "    return no_ast ;"
+    "}",
+    "",
     "static void recuo(void)",
     "{",
     "    int i;",
@@ -1191,11 +1317,25 @@ static const char *const rt_primitivas[] = {
     "        recuo();",
     "        printf(\"%s\\n\", nao_terminal);",
     "    }",
+    "    if (imprime_ast) {",
+    "        No *no = criar_ast(nao_terminal, \"\");",
+    "        if (atual_ast == NULL) {",
+    "            raiz_ast = no ;",
+    "        } else {",
+    "             adicionar_filho_ast(atual_ast, no);",
+    "        }",
+    "        atual_ast = no;",
+    "    }",
     "    nivel_arvore++;",
     "}",
     "",
     "void arvore_sai(void)",
     "{",
+    "    if (imprime_ast) {",
+    "        if (atual_ast != NULL) {",
+    "            atual_ast = atual_ast->pai ;",
+    "        }",
+    "    }",
     "    nivel_arvore--;",
     "}",
     "",
@@ -1203,6 +1343,7 @@ static const char *const rt_primitivas[] = {
     "void match(int esperado)",
     "{",
     "    int lista[2];",
+    "    char lex[100];",
     "    if ((int) tok.tipo != esperado) {",
     "        lista[0] = esperado;",
     "        lista[1] = -1;",
@@ -1217,6 +1358,15 @@ static const char *const rt_primitivas[] = {
     "            printf(\"%s '%s'\\n\", nome_token(tok.tipo), tok.lexema);",
     "    }",
     "    modo_panico = 0;",
+    "    if (imprime_ast && atual_ast != NULL) {",
+    "        No *no;",
+    "        if (nome_token(tok.tipo)[0] == '\\'')",
+    "            strcpy(lex, \"\");",
+    "        else",
+    "            strcpy(lex, tok.lexema);",
+    "        no = criar_ast(nome_token(tok.tipo), lex);",
+    "        adicionar_filho_ast(atual_ast, no);",
+    "    }",
     "    avancar();",
     "}",
     "",
@@ -1498,14 +1648,19 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
     fputs("            tokens = argv[++i];\n", f);
     fputs("        } else if (strcmp(argv[i], \"--recuperar\") == 0) {\n", f);
     fputs("            recupera_erros = 1;\n", f);
+    fputs("        } else if (strcmp(argv[i], \"--ast\") == 0) {\n", f);
+    fputs("            imprime_ast = 1;\n", f);
     fputs("        } else if (argv[i][0] == '-' && argv[i][1] != '\\0') {\n", f);
-    fputs("            fprintf(stderr, \"uso: %s [--tree] [--recuperar] [--tokens arquivo.tok | "
+    fputs("            fprintf(stderr, \"uso: %s [--tree] [--recuperar] [--ast] [--tokens arquivo.tok | "
           "programa]\\n\", argv[0]);\n", f);
     fputs("            return 2;\n        } else {\n            arquivo = argv[i];\n"
           "        }\n    }\n", f);
     fputs("    if (imprimir_arvore && !SUPORTE_ARVORE)\n", f);
     fputs("        fprintf(stderr, \"aviso: gere o analisador com --tree para "
           "imprimir a arvore\\n\");\n\n", f);
+    fputs("    if (imprime_ast && !SUPORTE_ARVORE)\n", f);
+    fputs("        fprintf(stderr, \"aviso: gere o analisador com --tree antes para "
+          "imprimir a arvore sintatica depois com --ast\\n\");\n\n", f);
     fputs("    if (tokens != NULL) {\n", f);
     fputs("        arquivo_tokens = fopen(tokens, \"r\");\n", f);
     fputs("        if (arquivo_tokens == NULL) {\n", f);
@@ -1527,6 +1682,10 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
     fputs("    if (contador_erros == 0) {\n", f);
     fputs("        printf(\"entrada aceita\\n\");\n", f);
     fputs("    }\n", f);
+    fputs("    if (imprime_ast == 1 && contador_erros == 0 && raiz_ast != NULL) {\n", f);
+    fputs("        raiz_ast = simplificar_ast(raiz_ast);\n", f);    
+    fputs("        imprimir_ast(raiz_ast, 0);\n", f);
+    fputs("    }\n", f);
     fputs("    if (arquivo_tokens != NULL) {\n        fclose(arquivo_tokens);\n", f);
     fputs("    } else {\n", f);
     if (op->microc)
@@ -1534,6 +1693,7 @@ static void gerar_main(FILE *f, const Gramatica *g, const OpcoesGeracao *op)
     else
         fputs("        free(fonte);\n", f);
     fputs("        if (entrada != stdin)\n            fclose(entrada);\n    }\n", f);
+    fputs("    liberar_ast(raiz_ast);\n", f);
     fputs("    if (contador_erros > 0) {\n        return 1;\n    }\n", f);
     fputs("    return 0;\n", f);
     fputs("}\n", f);
