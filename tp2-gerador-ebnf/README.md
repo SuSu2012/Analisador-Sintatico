@@ -45,6 +45,7 @@ Opções do gerador:
 - `--sets`: mostra os conjuntos anulável, FIRST e FOLLOW;
 - `--debug`: mostra a gramática do jeito que foi lida;
 - `--tree`: inclui no analisador a opção de imprimir a árvore de derivação;
+- `--corrigir`: corrige a recursão à esquerda direta em vez de recusar a gramática (veja "Extras implementados");
 - `--scanner microc`: usa o scanner do TP1 em vez de gerar um léxico.
 
 O analisador gerado lê o programa do arquivo indicado ou da entrada padrão. Ele termina com código 0 quando aceita a entrada e com 1 quando encontra erro.
@@ -271,3 +272,53 @@ Limitações:
 - sem a pontuação, parte da informação fica na posição dos nós. Em `v[0] = 50`, por exemplo, o índice é o que aparece entre o `ID` e o `=`;
 - a árvore só é impressa quando a entrada é aceita. Com `--recuperar` e algum erro, ela estaria incompleta, então não é mostrada;
 - assim como a recuperação, a `--ast` não é coberta pelo `make test`. Foi testada à mão, com as gramáticas `expr` e `microc`.
+
+### Correção automática da recursão à esquerda (+0,5, feito em parte)
+
+O enunciado pede duas correções automáticas: a recursão à esquerda direta e a fatoração à esquerda. Só a primeira foi feita.
+
+Com a opção `--corrigir`, o gerador reescreve as regras com recursão à esquerda direta em vez de recusar a gramática. Uma regra do tipo `a = a α | β ;` vira `a = β { α } ;`. A ideia é a mesma da transformação clássica `A → β A'`, `A' → α A' | ε`, mas na EBNF a repetição `{ }` faz o papel de `A'`, e não é preciso criar um não terminal novo. Sem a opção, nada muda: a gramática continua sendo recusada.
+
+Para cada regra corrigida, o gerador mostra um aviso com a regra nova. Exemplo com `recursao_esquerda.ebnf`:
+
+```
+$ ./gerador testes/gramaticas/recursao_esquerda.ebnf --sets --corrigir
+testes/gramaticas/recursao_esquerda.ebnf:10:12: aviso: recursao a esquerda direta corrigida em expr; a regra mudou para:
+expr = term { '+' term } ;
+testes/gramaticas/recursao_esquerda.ebnf:11:12: aviso: recursao a esquerda direta corrigida em term; a regra mudou para:
+term = NUM { '*' NUM } ;
+testes/gramaticas/recursao_esquerda.ebnf:12: erro: nao terminal lista tem recursao a esquerda indireta
+testes/gramaticas/recursao_esquerda.ebnf:13: erro: nao terminal item tem recursao a esquerda indireta
+```
+
+O `expr` e o `term` foram corrigidos. O `lista` e o `item` têm recursão indireta, que não é corrigida, e por isso a gramática continua sendo recusada.
+
+Quando há várias alternativas de cada tipo, elas são agrupadas:
+
+```
+a = "b" | a "c" | a "d" "e" | "f" ;      vira      a = ( 'b' | 'f' ) { 'c' | 'd' 'e' } ;
+```
+
+Casos que não são corrigidos e continuam dando erro:
+
+- recursão indireta, como `lista` e `item` acima;
+- regra sem nenhuma alternativa que não seja recursiva, como `a = a "x" ;` (essa regra já é recusada antes, por ser improdutiva);
+- alternativa que é só o próprio não terminal, como `c = c | "q" ;`;
+- o não terminal dentro de um grupo, como `b = ( b "x" ) "z" | "w" ;`.
+
+Como funciona (`src/correcao.c`, função `corrige_ebnf`):
+
+1. Para cada não terminal cuja regra tem mais de uma alternativa, a função `recursao_esq_direta` olha cada alternativa e diz se ela é uma sequência que começa com o próprio não terminal.
+2. Se pelo menos uma alternativa é recursiva e pelo menos uma não é, as alternativas são separadas em dois grupos: as recursivas (α) e as outras (β). Das recursivas, o primeiro símbolo é retirado.
+3. É montada a regra nova: uma sequência com o grupo β e, depois, uma repetição `{ }` com o grupo α. Um grupo com uma alternativa só entra sem o `|` em volta, e uma sequência que ficou com um símbolo só entra sem a sequência em volta. Assim a regra fica no mesmo formato que a leitura da gramática produz.
+4. A regra antiga é trocada pela nova. Os nós que sobraram são liberados, e os nós reaproveitados ficam na regra nova.
+
+A correção roda depois das verificações da etapa 2 e antes do cálculo dos conjuntos, porque os conjuntos também precisam ser calculados para os nós novos. Por isso foi preciso mudar o `src/main.c`, que o código-base dizia não ser necessário alterar: ele ganhou a opção `--corrigir` e a chamada de `corrige_ebnf`.
+
+Testes feitos à mão: a gramática de expressões escrita com recursão à esquerda (`expr = expr "+" term | expr "-" term | term ;` e `term = term "*" fator | fator ;`) foi corrigida, e o analisador gerado aceitou `1 + 2 * x`, `1 - 2 - 3` e `(a + b) * c` e recusou `1 +` com a mensagem certa. Os casos que não são corrigidos continuaram dando erro. A ferramenta `leaks` do macOS e o AddressSanitizer do compilador (`-fsanitize=address`) não apontaram vazamentos nem acessos inválidos à memória.
+
+Limitações:
+
+- a fatoração à esquerda (`x = A α | A β ;` virar `x = A ( α | β ) ;`) não foi feita. Gramáticas como `conflito_ll1.ebnf` continuam sendo recusadas, mesmo com `--corrigir`;
+- a opção `--debug` mostra a gramática como foi lida, antes da correção. A regra corrigida aparece só no aviso;
+- o `make test` não usa a opção `--corrigir`.
