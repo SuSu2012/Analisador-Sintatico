@@ -36,6 +36,7 @@ mkdir -p build
 gcc -ansi -pedantic -Wall -Wextra -o build/expr_bin build/expr.c
 ./build/expr_bin exemplo.txt
 ./build/expr_bin --tree exemplo.txt     # mostra a árvore de derivação
+./build/expr_bin --ast exemplo.txt      # mostra a árvore sintática abstrata
 ```
 
 Opções do gerador:
@@ -46,11 +47,18 @@ Opções do gerador:
 - `--tree`: inclui no analisador a opção de imprimir a árvore de derivação;
 - `--scanner microc`: usa o scanner do TP1 em vez de gerar um léxico.
 
-O analisador gerado lê o programa do arquivo indicado ou da entrada padrão. Ele termina com código 0 quando aceita a entrada e com 1 quando encontra erro. Com `--tokens arquivo`, ele lê os tokens de um arquivo no formato do TP1 (`Token: tipo = 33, lexema = 'int', linha = 1`) em vez de ler o programa. Com `--recuperar`, ele não para no primeiro erro sintático e continua a análise (veja "Extras implementados").
+O analisador gerado lê o programa do arquivo indicado ou da entrada padrão. Ele termina com código 0 quando aceita a entrada e com 1 quando encontra erro.
+
+Opções do analisador gerado:
+
+- `--tree`: mostra a árvore de derivação durante a análise. O analisador precisa ter sido gerado com `--tree`;
+- `--ast`: mostra a árvore sintática abstrata no fim da análise. Também exige gerar com `--tree` (veja "Extras implementados");
+- `--recuperar`: não para no primeiro erro sintático e continua a análise (veja "Extras implementados");
+- `--tokens arquivo`: lê os tokens de um arquivo no formato do TP1 (`Token: tipo = 33, lexema = 'int', linha = 1`) em vez de ler o programa.
 
 ## O que foi implementado
 
-Todas as partes marcadas com `TODO(aluno)` no código-base foram feitas. Deixamos os comentários `TODO(aluno)` no código para lembrar o que era nosso e o que já veio pronto.
+Todas as partes que o código-base deixava para os alunos foram feitas. A versão com os comentários `TODO(aluno)` originais, que marcam essas partes, está na branch `branch-todo`.
 
 | Etapa | Arquivo | O que faz |
 | --- | --- | --- |
@@ -170,3 +178,96 @@ Limitações:
 - a recuperação é aproximada. O FOLLOW diz o que pode vir depois de X em algum lugar da gramática, não necessariamente no ponto do erro. Por isso, às vezes o analisador descarta um trecho que tinha outro erro, e esse segundo erro não é mostrado;
 - erros léxicos (como um caractere inválido ou uma string não terminada) continuam encerrando a análise, mesmo com `--recuperar`;
 - os testes de `make test` rodam os analisadores sem opção, então não cobrem a recuperação. Ela foi testada à mão, com as gramáticas `gram`, `expr` e `microc`.
+
+### Árvore sintática abstrata (+1,0)
+
+Com a opção `--ast`, o analisador gerado monta a árvore na memória durante a análise e, no fim, simplifica e imprime essa árvore, depois de `entrada aceita`. A diferença para o `--tree`: o `--tree` imprime a árvore de derivação completa enquanto analisa; a `--ast` deixa de fora o que não tem significado.
+
+Exemplo com `(1 + 2) * x` na gramática `expr`. Árvore de derivação (`--tree`):
+
+```
+expr
+  term
+    factor
+      '('
+      expr
+        term
+          factor
+            NUM '1'
+        '+'
+        term
+          factor
+            NUM '2'
+      ')'
+    '*'
+    factor
+      ID 'x'
+```
+
+Árvore abstrata (`--ast`):
+
+```
+term
+  expr
+    NUM '1'
+    '+'
+    NUM '2'
+  '*'
+  ID 'x'
+```
+
+A simplificação usa duas regras:
+
+1. **Pontuação sai da árvore.** As folhas `(`, `)`, `[`, `]`, `{`, `}`, `;` e `,` são descartadas. Os parênteses não fazem falta: o agrupamento já aparece no formato da árvore, com o `1 + 2` num ramo abaixo do `*`.
+2. **Não terminal com um filho só é trocado por esse filho.** É isso que tira as cadeias como `expr`, `term`, `factor`, `NUM`, que existem só por causa da forma da gramática.
+
+Operadores e palavras-chave ficam na árvore. Sem o `'+'` não daria para saber qual é a operação, e sem o `'if'` ou o `'while'` não daria para saber qual é o comando. Um exemplo em Micro C:
+
+```
+$ ./build/microc/parser_microc --ast exemplo.mc
+entrada aceita
+programa
+  'int'
+  'main'
+  bloco
+    declaracao
+      'int'
+      ID 'x'
+    atribuicao_interna
+      ID 'x'
+      '='
+      termo
+        expressao_aritmetica
+          INTEGERCONST '3'
+          '+'
+          INTEGERCONST '4'
+        '*'
+        INTEGERCONST '2'
+    comando_if
+      'if'
+      expressao_relacional
+        ID 'x'
+        '>'
+        INTEGERCONST '10'
+      comando_print
+        'print'
+        ID 'x'
+```
+
+(programa: `int main() { int x; x = (3 + 4) * 2; if (x > 10) print(x); }`)
+
+Como funciona:
+
+- Cada nó é uma `struct No` com o nome (não terminal ou token), o lexema, um vetor de filhos que cresce com `realloc` e um ponteiro para o pai.
+- A árvore é montada nos mesmos pontos que o `--tree` usa. `arvore_entra`, no início de cada `parse_X`, cria um nó para X, coloca esse nó como filho do nó atual e passa a usá-lo como atual. `match` cria uma folha para o token que casou. `arvore_sai`, no fim de `parse_X`, volta para o pai. Por isso a `--ast` só funciona se o analisador foi gerado com `--tree`; sem isso, o analisador mostra um aviso e não imprime a árvore.
+- No fim, se não houve erro, `simplificar_ast` percorre a árvore de baixo para cima aplicando as duas regras, e `imprimir_ast` mostra o resultado. A árvore é sempre liberada com `liberar_ast`, com erro ou sem erro. Conferimos com a ferramenta `leaks` do macOS que não sobra memória sem liberar.
+
+Onde está no código, tudo em `src/codegen.c`: a `struct No` e as variáveis `raiz_ast`, `atual_ast` e `imprime_ast` (em `rt_estado`); as funções `criar_ast`, `adicionar_filho_ast`, `imprimir_ast`, `liberar_ast`, `eh_pontuacao` e `simplificar_ast`, além das mudanças em `arvore_entra`, `arvore_sai` e `match` (em `rt_primitivas`); a leitura da opção, o aviso, a simplificação, a impressão e a liberação (em `gerar_main`).
+
+Limitações:
+
+- os operadores ficam no mesmo nível dos operandos (`1`, `+`, `2` como irmãos), e não como pai deles. Para isso o gerador precisaria saber quais literais são operadores, e isso muda de uma gramática para outra;
+- a lista de pontuação é fixa. Se uma gramática usar outro símbolo só como separador, ele continua na árvore;
+- sem a pontuação, parte da informação fica na posição dos nós. Em `v[0] = 50`, por exemplo, o índice é o que aparece entre o `ID` e o `=`;
+- a árvore só é impressa quando a entrada é aceita. Com `--recuperar` e algum erro, ela estaria incompleta, então não é mostrada;
+- assim como a recuperação, a `--ast` não é coberta pelo `make test`. Foi testada à mão, com as gramáticas `expr` e `microc`.

@@ -15,12 +15,14 @@
  * as primitivas, o lexico (exceto o reconhecimento das expressoes
  * regulares) e a traducao de terminais e nao terminais.
  *
- * TODO(aluno):
+ * Implementado pelo grupo:
  *   - gen_expr: traducao de sequencia, alternativa, [ ] e { }
  *     (esquema da secao 4 do enunciado);
- *   - gen_casamento_regex: converter uma expressao regular de TOKENS em
+ *   - gen_casamento_regex: converte uma expressao regular de TOKENS em
  *     codigo C (automato finito) que reconhece o maior prefixo;
- *   - gen_token_de_arquivo: leitura do arquivo de tokens do TP1.
+ *   - gen_token_de_arquivo: leitura do arquivo de tokens do TP1;
+ *   - extras: recuperacao de erros (--recuperar) e arvore sintatica
+ *     abstrata (--ast) no analisador gerado.
  */
 #include <ctype.h>
 #include <stdarg.h>
@@ -273,15 +275,17 @@ static void emit_erro(Emissor *em, const Bitset *esperados)
 static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
 {
     /*
-     * TODO(aluno): traduzir as demais construcoes (secao 4):
+     * Traducao de cada construcao (secao 4):
      *
+     *   E_TERM  t              ->  match(t)
+     *   E_NAOTERM B            ->  parse_B()
      *   E_SEQ   a1 a2 ... an   ->  gen_expr de cada filho, em ordem
      *   E_ALT   a1 | ... | an  ->  if (FIRST(a1)) {...} else if ... else erro
      *   E_OPC   [ a ]          ->  if (FIRST(a)) { ... }
      *   E_REP   { a }          ->  while (FIRST(a)) { ... }
      *   E_VAZIO                ->  nada
      *
-     * Ferramentas disponiveis neste arquivo:
+     * Funcoes usadas:
      *   emit(em, fmt, ...)                 uma linha indentada
      *   em->nivel++ / em->nivel--          indentacao dos blocos
      *   emit_teste(em, "if (", g, &x->first, ") {")
@@ -290,7 +294,6 @@ static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
      * Uma alternativa anulavel nao tem teste: ela fica no else final,
      * no lugar do erro.
      */
-    
     int i;
     Expr *no_anulavel = NULL;
     int primeiro = 1;
@@ -375,7 +378,7 @@ static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
         /* cadeia vazia */
         break;
     default:
-        emit(em, "/* TODO(aluno): construcao ainda nao traduzida */");
+        emit(em, "/* construcao desconhecida */");
         (void) emit_teste;
         (void) emit_erro;
         break;
@@ -386,23 +389,16 @@ static void gen_expr(Emissor *em, const Gramatica *g, const Expr *e)
 /* Expressoes regulares de TOKENS (modo proprio)                      */
 /* ------------------------------------------------------------------ */
 
-/* Emite a funcao
- *     static size_t <nome>(const char *s)
- * que devolve o comprimento do MAIOR prefixo de s reconhecido pela
- * expressao regular, ou 0 se nenhum prefixo for reconhecido.
- * Retorna 0 se a expressao for valida (senao reporte com diag_erro). */
-/* TODO(aluno): converter a expressao regular em automato finito
- * deterministico (por exemplo: analisar a expressao, construir o AFN
- * de Thompson e determiniza-lo pela construcao de subconjuntos) e
- * emitir o automato como codigo C: um switch sobre o estado, com as
+/* Cada expressao regular de TOKENS vira um automato finito
+ * deterministico: a expressao e analisada, vira um AFN pela construcao
+ * de Thompson e o AFN e determinizado pela construcao de subconjuntos.
+ * O automato e emitido como codigo C: um switch sobre o estado, com as
  * transicoes por faixas de caracteres, guardando a ultima posicao em
- * que o automato passou por um estado final. Subconjunto minimo:
+ * que o automato passou por um estado final (maior prefixo). Aceita
  * concatenacao, |, *, +, ?, parenteses, classes [a-z] e [^...], o
- * ponto e escapes como \n, \t, \\ e \/.
- *
- * O stub abaixo nao reconhece nada. */
+ * ponto e escapes como \n, \t, \\ e \/. */
 
- /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
 /* Expressoes regulares de TOKENS (modo proprio)                      */
 /* Automato Finito Deterministico (AFN -> AFD)                        */
 /* ------------------------------------------------------------------ */

@@ -64,6 +64,18 @@
                 recuperação em modo pânico e revisar cada passo. A IA explicou
                 as funções emit e emit_teste e mostrou o formato da linha do
                 laço de descarte que precisava aparecer no código gerado.
-    O que fiz:  escrevi o código eu mesmo, passo a passo; a IA testou cada
-                versão e apontou erros (= no lugar de ==, chave faltando,
+    O que fiz:  escrevi o código eu mesmo, passo a passo; a IA me ajudou com os testes, apontando erros (= no lugar de ==, chave faltando,
                 -> no lugar de ., indentação do código gerado).
+
+    Ferramenta: Claude (Claude Code), modelo Claude Opus 5.5
+    Trecho:     src/codegen.c (extra: árvore sintática abstrata, opção --ast)
+    Finalidade: entender a diferença entre o --tree do gerador e o do
+                analisador, planejar a estrutura do nó e as funções da
+                árvore, e entender a lógica da simplificação. A IA explicou
+                cada parte em palavras e, na simplificar_ast, mostrou um
+                pseudocódigo da recursão. Também explicou o uso de static e
+                o escape em duas camadas (\\n, \\0, '\\'') nas strings do
+                gerador.
+    O que fiz:  escrevi o código eu mesmo; a IA me ajudou a testar cada versão (incluindo
+                vazamentos de memória).
+

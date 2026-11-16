@@ -3,10 +3,11 @@
  *
  * Fornecido: conj_iniciar e conj_imprimir.
  *
- * TODO(aluno): conj_anulavel, conj_first e conj_follow. Os tres sao
- * calculados por iteracao ate ponto fixo: repita uma passada sobre todas
- * as regras enquanto algum conjunto (ou flag) mudar. bitset_unir devolve
- * 1 quando o conjunto de destino muda, o que ajuda a detectar o ponto fixo.
+ * Implementado pelo grupo: conj_anulavel, conj_first e conj_follow. Os
+ * tres sao calculados por iteracao ate ponto fixo: uma passada sobre
+ * todas as regras e repetida enquanto algum conjunto (ou flag) mudar.
+ * bitset_unir devolve 1 quando o conjunto de destino muda, o que permite
+ * detectar o ponto fixo.
  */
 #include <stdio.h>
 #include <string.h>
@@ -59,15 +60,15 @@ void conj_imprimir(FILE *f, const Gramatica *g)
 }
 
 /* ------------------------------------------------------------------ */
-/* A implementar                                                      */
+/* Implementado pelo grupo                                            */
 /* ------------------------------------------------------------------ */
 
-/* TODO(aluno): calcular e->anulavel para cada no Expr e g->nts[i].anulavel.
+/* Calcula e->anulavel para cada no Expr e g->nts[i].anulavel.
  *   E_TERM: 0        E_VAZIO: 1        E_NAOTERM: anulavel do nao terminal
  *   E_SEQ: 1 se todos os filhos forem anulaveis
  *   E_ALT: 1 se algum filho for anulavel
- *   E_OPC, E_REP: 1 (calcule tambem o do filho)
- * Repita ate nada mudar. */
+ *   E_OPC, E_REP: 1 (calcula tambem o do filho)
+ * Repete ate nada mudar. */
 static int calc_expr_anulavel(Gramatica *g, Expr *e)
 {
     int i, novo, mudou = 0;
@@ -130,11 +131,11 @@ static int calc_expr_anulavel(Gramatica *g, Expr *e)
     } while (mudou);
 }
 
-/* TODO(aluno): calcular e->first para cada no Expr e g->nts[i].first.
+/* Calcula e->first para cada no Expr e g->nts[i].first.
  *   E_TERM t: {t}     E_NAOTERM B: FIRST(B)     E_VAZIO: {}
  *   E_SEQ a1..an: FIRST(a1) U FIRST(a2) ... ate o primeiro ai nao anulavel
  *   E_ALT, E_OPC, E_REP: uniao dos FIRST dos filhos
- * Calcule o FIRST de TODOS os filhos de uma sequencia, mesmo os que
+ * Calcula o FIRST de TODOS os filhos de uma sequencia, mesmo os que
  * nao contribuem para o FIRST dela: o gerador de codigo usa-os. */
 static int calc_expr_first(Gramatica *g, Expr *e)
 {
@@ -196,15 +197,15 @@ static int calc_expr_first(Gramatica *g, Expr *e)
     } while (mudou);
 }
 
-/* TODO(aluno): calcular e->follow (o que pode vir logo apos cada
- * construcao) e g->nts[i].follow. FOLLOW(inicial) contem $ (TERM_FIM).
- * Para cada regra A = alfa, faca follow(alfa) U= FOLLOW(A) e propague:
+/* Calcula e->follow (o que pode vir logo apos cada construcao) e
+ * g->nts[i].follow. FOLLOW(inicial) contem $ (TERM_FIM).
+ * Para cada regra A = alfa, faz follow(alfa) U= FOLLOW(A) e propaga:
  *   E_SEQ a1..an:  follow(ai) U= FIRST(ai+1 ... an), mais follow(seq)
  *                  se ai+1 ... an for anulavel
  *   E_ALT, E_OPC:  follow(filho) U= follow(no)
  *   E_REP { a }:   follow(a) U= follow(no) U FIRST(a)
  *   E_NAOTERM B:   FOLLOW(B) U= follow(no)
- * Repita ate nada mudar. */
+ * Repete ate nada mudar. */
 static int propagar_follow(Gramatica *g, Expr *e)
 {
     int i, j, mudou = 0;

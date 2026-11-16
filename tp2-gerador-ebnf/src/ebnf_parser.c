@@ -17,7 +17,7 @@
  * As secoes TOKENS e RULES e a regra completa (regra) ja estao prontas,
  * incluindo a recuperacao de erros por sincronizacao no ';'.
  *
- * TODO(aluno): implementar parse_expr, parse_seq e parse_fator, que
+ * Implementado pelo grupo: parse_expr, parse_seq e parse_fator, que
  * constroem a arvore Expr do lado direito das regras (ver gramatica.h).
  */
 #include <stdlib.h>
@@ -83,27 +83,24 @@ static void sincronizar(Parser *p)
 /* ------------------------------------------------------------------ */
 
 /*
- * TODO(aluno): implementar as funcoes abaixo seguindo a gramatica da
- * notacao (cabecalho deste arquivo), uma funcao por nao terminal:
+ * Uma funcao por nao terminal, seguindo a gramatica da notacao
+ * (cabecalho deste arquivo):
  *
  *   static Expr *parse_expr(Parser *p);   expr  = seq { "|" seq } ;
  *   static Expr *parse_seq(Parser *p);    seq   = { fator } ;
  *   static Expr *parse_fator(Parser *p);  fator = NOME_TERM | LITERAL | ...
  *
- * Dicas:
+ * Observacoes:
  *   - O token corrente esta em p->tok (tipo, texto, linha, coluna);
  *     avancar(p) consome-o e esperar(p, MT_...) consome um token exigido.
  *   - Terminais: gram_terminal(p->g, texto, literal, linha, coluna)
- *     devolve o indice; crie o no com expr_simbolo(E_TERM, ...).
+ *     devolve o indice; o no e criado com expr_simbolo(E_TERM, ...).
  *   - Nao terminais: gram_naoterminal(...) e expr_simbolo(E_NAOTERM, ...).
  *   - [ a ] e { a }: expr_unario(E_OPC, a, ...) e expr_unario(E_REP, a, ...).
- *   - ( a ) nao cria no: devolva a propria arvore de a.
- *   - Evite nos com um unico filho: uma sequencia com um so fator ou
- *     uma alternativa unica devem ser devolvidas diretamente.
+ *   - ( a ) nao cria no: devolve a propria arvore de a.
+ *   - Nao ha nos com um unico filho: uma sequencia com um so fator ou
+ *     uma alternativa unica sao devolvidas diretamente.
  *   - Uma sequencia vazia (ex.: "a = ;" ou "b | ") vira E_VAZIO.
- *
- * O stub abaixo apenas descarta o lado direito da regra, para que o
- * gerador compile e execute de ponta a ponta. Substitua-o.
  */
 static Expr *parse_expr(Parser *p);
 static Expr *parse_seq(Parser *p);

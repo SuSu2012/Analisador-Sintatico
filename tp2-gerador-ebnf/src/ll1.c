@@ -17,7 +17,7 @@
  * em que o else fica com o if mais proximo, como em C.
  *
  * Fornecido: reportar (formata as mensagens).
- * TODO(aluno): verificar_expr e ll1_verificar.
+ * Implementado pelo grupo: verificar_expr e ll1_verificar.
  */
 #include <stdarg.h>
 #include <stdio.h>
@@ -42,18 +42,13 @@ static void reportar(const Gramatica *g, int nt, const Expr *e, int eh_aviso,
     fputc('\n', stderr);
 }
 
-/* TODO(aluno): percorrer as regras e, para cada no E_ALT, E_OPC e E_REP,
- * verificar as condicoes do cabecalho. Use bitset_intersecao/bitset_vazio
- * e reporte com reportar(...), por exemplo:
- *
- *   reportar(g, nt, e, 0, &comum, "alternativas %d e %d comecam com", i+1, j+1);
- *
- * que imprime:
+/* Percorre as regras e, para cada no E_ALT, E_OPC e E_REP, verifica as
+ * condicoes do cabecalho com bitset_intersecao/bitset_vazio e reporta
+ * com reportar(...). Exemplo de mensagem:
  *   expr.ebnf:7:10: erro: conflito LL(1) em stmt: alternativas 1 e 2 comecam com {ID}
- *
- * Retorne o numero de ERROS (avisos nao contam). */
+ * Retorna o numero de ERROS (avisos nao contam). */
 
- /* Percorre recursivamente a arvore de expressoes de uma regra checando
+/* Percorre recursivamente a arvore de expressoes de uma regra checando
  * as condicoes LL(1) em nos E_ALT, E_OPC e E_REP. */
 static int verificar_expr(const Gramatica *g, int nt, const Expr *e)
 {

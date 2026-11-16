@@ -1,11 +1,11 @@
 /*
  * verificacao.c - Verificacoes semanticas da gramatica (etapa 2).
  *
- * Ja implementados (use como modelo):
+ * Fornecidos:
  *   - verif_indefinidos: nao terminais usados mas nao definidos;
  *   - verif_terminais:   terminais nomeados sem declaracao.
  *
- * TODO(aluno):
+ * Implementados pelo grupo:
  *   - verif_inalcancaveis      (aviso)
  *   - verif_improdutivos       (erro)
  *   - verif_recursao_esquerda  (erro; direta e indireta)
@@ -61,13 +61,13 @@ static int verif_terminais(Gramatica *g, int modo_microc)
 }
 
 /* ------------------------------------------------------------------ */
-/* A implementar                                                      */
+/* Implementado pelo grupo                                            */
 /* ------------------------------------------------------------------ */
 
-/* TODO(aluno): emitir um AVISO para cada nao terminal que nao pode ser
- * alcancado a partir do simbolo inicial (g->inicial). Sugestao: marque
- * o inicial e, ate um ponto fixo, marque todo nao terminal que aparece
- * na regra de um nao terminal ja marcado (expr_percorrer ajuda). */
+/* Emite um AVISO para cada nao terminal que nao pode ser alcancado a
+ * partir do simbolo inicial (g->inicial). Marca o inicial e, ate um
+ * ponto fixo, marca todo nao terminal que aparece na regra de um nao
+ * terminal ja marcado (usando expr_percorrer). */
 typedef struct {
     int *marca;
     int *mudou;
@@ -111,11 +111,11 @@ static int verif_inalcancaveis(Gramatica *g)
     return 0;
 }
 
-/* TODO(aluno): emitir um ERRO para cada nao terminal definido que nao
- * deriva nenhuma cadeia de terminais. Ponto fixo: um nao terminal e
- * produtivo se sua regra for produtiva, onde terminais, E_VAZIO, [..] e
- * {..} sao produtivos, uma sequencia exige todos os filhos produtivos
- * e uma alternativa exige ao menos um. Retorne o numero de erros. */
+/* Emite um ERRO para cada nao terminal definido que nao deriva nenhuma
+ * cadeia de terminais. Ponto fixo: um nao terminal e produtivo se sua
+ * regra for produtiva, onde terminais, E_VAZIO, [..] e {..} sao
+ * produtivos, uma sequencia exige todos os filhos produtivos e uma
+ * alternativa exige ao menos um. Retorna o numero de erros. */
 static int expr_produtiva(const Expr *e, const int *prod)
 {
     int i;
@@ -175,11 +175,11 @@ static int verif_improdutivos(Gramatica *g)
     return erros;
 }
 
-/* TODO(aluno): detectar recursao a esquerda direta (a = a ...) e
- * indireta (a = b ... ; b = a ...), inclusive atraves de prefixos
- * anulaveis (a = [ x ] a ...). Use o campo anulavel de Expr, ja
- * calculado quando esta funcao e chamada. Reporte um erro por nao
- * terminal recursivo e retorne o numero de erros. */
+/* Detecta recursao a esquerda direta (a = a ...) e indireta
+ * (a = b ... ; b = a ...), inclusive atraves de prefixos anulaveis
+ * (a = [ x ] a ...). Usa o campo anulavel de Expr, ja calculado quando
+ * esta funcao e chamada. Reporta um erro por nao terminal recursivo e
+ * retorna o numero de erros. */
 static void nts_a_esquerda(const Expr *e, char *esq)
 {
     int i;
