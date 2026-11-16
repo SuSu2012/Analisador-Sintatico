@@ -25,17 +25,19 @@
 #include "microc_mapa.h"
 #include "util.h"
 #include "verificacao.h"
+#include "correcao.h"
 
 static void uso(const char *prog)
 {
     fprintf(stderr,
             "uso: %s gramatica.ebnf -o prefixo [--scanner microc] [--sets] [--tree] "
-            "[--debug]\n"
+            "[--debug] [--corrigir]\n"
             "  -o prefixo         gera prefixo.h e prefixo.c\n"
             "  --scanner microc   usa o scanner do TP1 (TOKENS EXTERN \"tokens.h\")\n"
             "  --sets             imprime anulavel, FIRST e FOLLOW\n"
             "  --tree             o analisador gerado aceita --tree (arvore de derivacao)\n"
-            "  --debug            imprime a gramatica lida\n",
+            "  --debug            imprime a gramatica lida\n"
+            "  --corrigir         adapta gramaticas com recursao a esquerda direta\n",
             prog);
 }
 
@@ -58,7 +60,7 @@ static void resolver_tokens_externos(Gramatica *g, const char *arquivo)
 int main(int argc, char **argv)
 {
     const char *arquivo = NULL, *prefixo = NULL;
-    int i, microc = 0, sets = 0, arvore = 0, debug = 0, status = EXIT_FAILURE;
+    int i, microc = 0, sets = 0, arvore = 0, debug = 0, corrigir = 0, status = EXIT_FAILURE;
     char *fonte;
     Gramatica *g;
     OpcoesGeracao op;
@@ -78,6 +80,8 @@ int main(int argc, char **argv)
             arvore = 1;
         } else if (strcmp(argv[i], "--debug") == 0) {
             debug = 1;
+        } else if (strcmp(argv[i], "--corrigir") == 0) {
+            corrigir = 1;
         } else if (argv[i][0] == '-') {
             uso(argv[0]);
             return EXIT_FAILURE;
@@ -116,6 +120,11 @@ int main(int argc, char **argv)
     /* 2. verificacao semantica */
     if (verif_basica(g, microc) > 0)
         goto fim;
+
+    /* extra: correcao de recursao a esquerda direta (--corrigir) */
+    if (corrigir){
+        corrige_ebnf(g);
+    }
 
     /* 3. conjuntos (+ recursao a esquerda, que depende de anulavel) */
     conj_iniciar(g);
